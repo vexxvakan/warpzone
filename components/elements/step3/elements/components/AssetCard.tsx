@@ -2,22 +2,15 @@
 import {
 	Avatar,
 	Badge,
+	Box,
 	Flex,
 	Grid,
 	GridItem,
-	ListItem,
 	Text,
 	useBoolean,
 	VStack
 } from "@chakra-ui/react"
-import {
-	HTMLProps,
-	MutableRefObject,
-	useEffect,
-	useLayoutEffect,
-	useRef,
-	useState
-} from "react"
+import { HTMLProps, useEffect } from "react"
 import { useTokenInfo } from "@hooks/useTokenInfo"
 import {
 	animate,
@@ -29,39 +22,26 @@ import {
 } from "framer-motion"
 import { Plus } from "phosphor-react"
 
-type AssetCardProps = Exclude<HTMLProps<HTMLDivElement>, "children"> & {
+export type AssetCardProps = Exclude<
+	HTMLProps<HTMLDivElement>,
+	"children, onClick"
+> & {
 	tokenSymbol?: string
-	onActionClick?: (args: {
-		tokenSymbol: string
-		actionType: "deposit" | "withdraw"
-	}) => void
 	balance?: number
-	activeIndex?: number
-	assetId?: number
-	delayPerPixel: number
-	i: number
-	originIndex: number
-	originOffset: MutableRefObject<{
-		top: number
-		left: number
-	}>
+	isActive: boolean
 }
 
 export const AssetCard = ({
 	tokenSymbol,
 	balance,
-	assetId,
-	activeIndex,
-	delayPerPixel,
-	i,
-	originIndex,
-	originOffset
+	isActive
 }: AssetCardProps) => {
 	const { ticker, logoURI } = useTokenInfo(tokenSymbol) || {}
 
-	const tokenControls = useAnimation()
 	const addKeplrControls = useAnimation()
 	const plusIconControls = useAnimation()
+
+	const [isHover, setHover] = useBoolean()
 
 	const boxShadow = useMotionValue(
 		"0 3px 10px 0 rgba(101, 246, 168, 0), 0 -3px 10px 0 rgba(0, 150, 250, 0),inset 0 0 0 2px  rgba(101, 246, 168, 0),inset -4px 0 7px -2px rgba(220,220,220,0.35)"
@@ -73,13 +53,6 @@ export const AssetCard = ({
 	const backgroundImage = useMotionValue(
 		"radial-gradient(circle at 40% 91%, rgba(251, 251, 251,0.04) 0%, rgba(251, 251, 251,0.04) 50%,rgba(229, 229, 229,0.04) 50%, rgba(229, 229, 229,0.04) 100%),radial-gradient(circle at 66% 97%, rgba(36, 36, 36,0.04) 0%, rgba(36, 36, 36,0.04) 50%,rgba(46, 46, 46,0.04) 50%, rgba(46, 46, 46,0.04) 100%),radial-gradient(circle at 86% 7%, rgba(40, 40, 40,0.04) 0%, rgba(40, 40, 40,0.04) 50%,rgba(200, 200, 200,0.04) 50%, rgba(200, 200, 200,0.04) 100%),radial-gradient(circle at 15% 16%, rgba(99, 99, 99,0.04) 0%, rgba(99, 99, 99,0.04) 50%,rgba(45, 45, 45,0.04) 50%, rgba(45, 45, 45,0.04) 100%),radial-gradient(circle at 75% 99%, rgba(243, 243, 243,0.04) 0%, rgba(243, 243, 243,0.04) 50%,rgba(37, 37, 37,0.04) 50%, rgba(37, 37, 37,0.04) 100%),radial-gradient(circle at bottom left, rgb(34, 222, 237),rgb(135, 89, 215) 65%)"
 	)
-
-	const [isActive, setActive] = useState(false)
-	const [isHover, setHover] = useBoolean()
-
-	const offset = useRef({ top: 0, left: 0 })
-	const ref = useRef<HTMLDivElement>()
-	const delayRef = useRef<number>(0)
 
 	const addKeplrVariants: Variants = {
 		hover: {
@@ -133,66 +106,6 @@ export const AssetCard = ({
 		}
 	}
 
-	const tokenCardVariants: Variants = {
-		hidden: {
-			scale: 0.5,
-			opacity: 0,
-			transition: { duration: 0.25 }
-		},
-		reveal: (delayRef: MutableRefObject<number>) => ({
-			opacity: 1,
-			scale: 1,
-			width: "100%",
-			transition: { delay: delayRef.current, duration: 0.25 }
-		}),
-		rest: {
-			opacity: 1,
-			scale: 1,
-			width: "4rem",
-			transition: { duration: 0.25 }
-		},
-		active: {
-			opacity: 1,
-			scale: 1,
-			width: "100%",
-			transition: { duration: 0.25 }
-		},
-		exit: {
-			opacity: 0,
-			scale: 0.5
-		}
-	}
-
-	useLayoutEffect(() => {
-		const element = ref.current
-		if (!element) return
-
-		offset.current = {
-			top: element.offsetTop,
-			left: element.offsetLeft
-		}
-
-		if (i === originIndex) {
-			// eslint-disable-next-line no-param-reassign
-			originOffset.current = offset.current
-		}
-	}, [delayPerPixel])
-
-	useEffect(() => {
-		const dx = Math.abs(offset.current.left - originOffset.current.left)
-		const dy = Math.abs(offset.current.top - originOffset.current.top)
-		const d = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2))
-		delayRef.current = d * delayPerPixel
-	})
-
-	useEffect(() => {
-		if (assetId === activeIndex) {
-			setActive(true)
-		} else {
-			setActive(false)
-		}
-	}, [activeIndex, assetId])
-
 	useEffect(() => {
 		if (isHover) {
 			const playHover = async () => {
@@ -227,13 +140,8 @@ export const AssetCard = ({
 
 	useEffect(() => {
 		if (!isActive) {
-			const playRestAnimation = async () => {
-				addKeplrControls.start("exit")
-				plusIconControls
-					.start("exit")
-					.then(() => tokenControls.start("reveal")) //  delayperpixel nur beim öffnen
-			}
-			playRestAnimation()
+			addKeplrControls.start("exit")
+			plusIconControls.start("exit")
 			animate(
 				boxShadow,
 				"0 3px 10px 0 rgba(101, 246, 168, 0), 0 -3px 10px 0 rgba(0, 150, 250, 0),inset 0 0 0 2px  rgba(101, 246, 168, 0),inset -4px 0 7px -2px rgba(220,220,220,0)",
@@ -251,7 +159,6 @@ export const AssetCard = ({
 				}
 			)
 		} else {
-			tokenControls.start("active")
 			addKeplrControls.start("rest")
 			plusIconControls.start("rest")
 			animate(
@@ -274,16 +181,9 @@ export const AssetCard = ({
 	}, [isActive])
 
 	return (
-		<ListItem
-			minW="6rem"
-			animate={tokenControls}
-			as={motion.li}
+		<Box
+			as={motion.div}
 			layout
-			initial={"hidden"}
-			// @ts-expect-error
-			ref={ref}
-			custom={delayRef}
-			variants={tokenCardVariants}
 			h="4rem"
 			rounded="2xl"
 			style={{
@@ -345,7 +245,6 @@ export const AssetCard = ({
 								exit="exit"
 								onHoverStart={setHover.on}
 								onHoverEnd={setHover.off}
-								onClick={() => console.log("Keplr Klick<")}
 								variants={addKeplrVariants}
 								animate={addKeplrControls}
 								// @ts-expect-error
@@ -364,6 +263,6 @@ export const AssetCard = ({
 					)}
 				</AnimatePresence>
 			</Grid>
-		</ListItem>
+		</Box>
 	)
 }

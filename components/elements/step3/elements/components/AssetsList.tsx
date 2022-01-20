@@ -1,18 +1,138 @@
-import { AssetCard } from "./AssetCard"
+/* eslint-disable react-hooks/exhaustive-deps */
+import { AssetCard, AssetCardProps } from "./AssetCard"
 import {
 	Box,
 	Flex,
+	Grid,
 	HStack,
 	IconButton,
 	Text,
-	UnorderedList,
 	Wrap
 } from "@chakra-ui/react"
 import { useGetSupportedAssetsBalancesOnChain } from "../hooks/useGetSupportedAssetsBalancesOnChain"
 import { useSdk } from "@services/client"
-import { useEffect, useRef, useState } from "react"
-import { AnimatePresence, motion } from "framer-motion"
+import {
+	MutableRefObject,
+	useEffect,
+	useLayoutEffect,
+	useRef,
+	useState
+} from "react"
+import { AnimatePresence, motion, useAnimation, Variants } from "framer-motion"
 import { ArrowCounterClockwise } from "phosphor-react"
+
+type TokenGridItemProps = AssetCardProps & {
+	delayPerPixel: number
+	i: number
+	originIndex: number
+	activeIndex: number
+	originOffset: MutableRefObject<{
+		top: number
+		left: number
+	}>
+}
+
+const TokenGridItem = ({
+	delayPerPixel,
+	originIndex,
+	originOffset,
+	tokenSymbol,
+	balance,
+	i,
+	activeIndex
+}: TokenGridItemProps) => {
+	const offset = useRef({ top: 0, left: 0 })
+	const ref = useRef<HTMLDivElement>()
+	const delayRef = useRef<number>(0)
+	const tokenCardControls = useAnimation()
+	const [isActive, setActive] = useState(false)
+
+	const tokenCardVariants: Variants = {
+		hidden: {
+			scale: 0.5,
+			opacity: 0,
+			width: "6rem",
+			transition: { duration: 0.25 }
+		},
+		reveal: (delayRef: MutableRefObject<number>) => ({
+			opacity: 1,
+			scale: 1.0,
+			width: "8rem",
+			transition: { delay: delayRef.current, duration: 0.25 }
+		}),
+		active: {
+			opacity: 1,
+			scale: 1,
+			width: "12rem",
+			transition: { duration: 0.25 }
+		},
+		rest: {
+			opacity: 1,
+			scale: 1,
+			width: "10rem",
+			transition: { duration: 0.25 }
+		}
+	}
+
+	useLayoutEffect(() => {
+		const element = ref.current
+		if (!element) return
+
+		offset.current = {
+			top: element.offsetTop,
+			left: element.offsetLeft
+		}
+
+		if (i === originIndex) {
+			// eslint-disable-next-line no-param-reassign
+			originOffset.current = offset.current
+		}
+	}, [delayPerPixel])
+
+	useLayoutEffect(() => {
+		const dx = Math.abs(offset.current.left - originOffset.current.left)
+		const dy = Math.abs(offset.current.top - originOffset.current.top)
+		const d = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2))
+		delayRef.current = d * delayPerPixel
+	})
+
+	useEffect(() => {
+		console.log(delayRef.current)
+	}, [delayRef])
+
+	useEffect(() => {
+		if (isActive) {
+			tokenCardControls.start("active")
+		} else {
+			tokenCardControls.start("reveal")
+		}
+	}, [isActive])
+
+	useEffect(() => {
+		if (i === activeIndex) {
+			setActive(true)
+		} else {
+			setActive(false)
+		}
+	}, [activeIndex])
+
+	return (
+		<Box
+			as={motion.div}
+			ref={ref}
+			initial="hidden"
+			animate={tokenCardControls}
+			variants={tokenCardVariants}
+			custom={delayRef}
+		>
+			<AssetCard
+				tokenSymbol={tokenSymbol}
+				balance={balance}
+				isActive={isActive}
+			/>
+		</Box>
+	)
+}
 
 export const AssetsList = () => {
 	const [loadingBalances, [myTokens, allTokens]] =
@@ -27,7 +147,7 @@ export const AssetsList = () => {
 	useEffect(() => setVisibility(true), [])
 
 	/* isLoading state is true if either we connect the wallet or loading balances */
-	// const isLoading = loadingBalances
+	const isLoading = loadingBalances
 	/* check if the user has any of the assets transferred on the chain */
 	const hasTransferredAssets = !loadingBalances && myTokens.length > 0
 
@@ -62,40 +182,42 @@ export const AssetsList = () => {
 				/>
 			</HStack>
 
-			<AnimatePresence>
-				{activeAccordionItem == 0 && (
-					<UnorderedList
-						listStyleType={"none"}
+			<AnimatePresence exitBeforeEnter>
+				{activeAccordionItem == 0 && isLoading && (
+					<Text color="secondary" as="span">
+						Loading Token Balances...
+					</Text>
+				)}
+				{activeAccordionItem == 0 && sdk.initialized && !isLoading && (
+					<Grid
 						m={0}
 						p={0}
+						templateColumns="repeat(4, fit-content(12rem))"
+						gap={1}
 						pos="relative"
-						flexWrap="wrap"
-						display="flex"
 						bg="blackAlpha.400"
-						as={motion.ul}
+						as={motion.div}
 						layout
 						initial={false}
-						animate={isVisible ? "visible" : "hidden"}
+						animate={isVisible ? "reveal" : "hidden"}
 						w="full"
 					>
-						{sdk.initialized &&
-							hasTransferredAssets &&
-							myTokens.map(({ tokenSymbol, balance }, index) => (
+						{hasTransferredAssets &&
+							//myTokens.map(({ tokenSymbol, balance }, index) => (
+							Array.from({ length: 20 }).map((_, index) => (
 								<Box
-									as={motion.li}
-									layout
+									key={index}
 									onClick={() => selectToken(index, activeIndex)}
-									key={tokenSymbol}
 								>
-									<AssetCard
-										tokenSymbol={tokenSymbol}
-										balance={balance}
+									<TokenGridItem
 										activeIndex={activeIndex}
-										assetId={index}
-										delayPerPixel={0.0012}
-										i={index}
+										tokenSymbol={"mock"}
+										balance={20}
+										delayPerPixel={0.002}
 										originIndex={0}
 										originOffset={originOffset}
+										isActive={false}
+										i={index}
 									/>
 								</Box>
 							))}
@@ -104,7 +226,7 @@ export const AssetsList = () => {
 								No compatible assets found.
 							</Text>
 						)}
-					</UnorderedList>
+					</Grid>
 				)}
 			</AnimatePresence>
 			<Box
@@ -123,15 +245,14 @@ export const AssetsList = () => {
 							!hasTransferredAssets &&
 							allTokens.map(({ tokenSymbol }) => {
 								return (
-									<AssetCard
+									<TokenGridItem
 										key={tokenSymbol}
-										tokenSymbol={tokenSymbol}
-										activeIndex={activeIndex + 50}
-										assetId={200}
-										delayPerPixel={0}
-										i={0}
+										delayPerPixel={0.004}
 										originIndex={0}
 										originOffset={originOffset}
+										isActive={false}
+										i={1}
+										activeIndex={activeIndex}
 									/>
 								)
 							})}
