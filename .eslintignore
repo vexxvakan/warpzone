@@ -26,6 +26,10 @@
 .DS_Store
 *.pem
 
+*.config.js
+*.config.cjs
+/package.json
+
 # debug
 npm-debug.log*
 yarn-debug.log*

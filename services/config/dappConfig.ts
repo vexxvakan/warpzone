@@ -3,12 +3,12 @@ import type { AppConfig, NetworkConfigs } from "."
 
 export const testnet: AppConfig = {
 	addressPrefix: "juno",
-	chainId: "uni-1",
-	chainName: "UNI TESTNET",
+	chainId: "uni-2",
+	chainName: "uni-2 (testnet)",
 	contract: "",
 	gasPrice: 0.025,
-	httpUrl: "https://lcd.uni.juno.deuslabs.fi",
-	rpcUrl: "https://rpc.uni.juno.deuslabs.fi",
+	httpUrl: "https://lcd.juno.giansalex.dev:443",
+	rpcUrl: "https://rpc.juno.giansalex.dev:443",
 	token: {
 		coinDecimals: 6,
 		coinDenom: "Juno",
@@ -26,8 +26,8 @@ export type Token = {
 export const coins: Token[] = [
 	{
 		decimals: 6,
-		denom: "uccat",
-		name: "CCAT"
+		denom: "ujunox",
+		name: "Juno"
 	}
 ]
 

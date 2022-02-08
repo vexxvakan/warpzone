@@ -1,14 +1,28 @@
+// eslint-disable-next-line canonical/filename-match-exported
 import { ChakraProvider, Flex } from "@chakra-ui/react"
-import { AppProps } from "next/app"
-import Head from "next/head"
-import { config, SdkProvider as KeplrProvider } from "../services"
-import theme from "../theme"
-import { Mainnet, DAppProvider as EVMProvider, Config } from "@usedapp/core"
-import { QueryClientProvider } from "react-query"
+import LoadingScreen from "@components/sections/LoadingScreen"
+import type { EmotionCache } from "@emotion/cache"
+import { CacheProvider } from "@emotion/react"
 import { queryClient } from "@services/client"
+import type { Config } from "@usedapp/core"
+import { Mainnet, DAppProvider as EVMProvider } from "@usedapp/core"
+import { DefaultSeo } from "next-seo"
+import type { AppProps } from "next/app"
+import dynamic from "next/dynamic"
+import Head from "next/head"
+import { useEffect, useState } from "react"
+import { QueryClientProvider } from "react-query"
+// import { ReactQueryDevtools } from "react-query/devtools"
 import { RecoilRoot } from "recoil"
+import defaultSEOConfig from "../next-seo.config"
+import theme from "../theme"
+import createEmotionCache from "../theme/createEmotionCache"
 
-import { ReactQueryDevtools } from "react-query/devtools"
+const Background = dynamic(() => import("@components/sections/Background"), {
+	ssr: false
+})
+
+const clientSideEmotionCache = createEmotionCache()
 
 const metamaskConfig: Config = {
 	readOnlyChainId: Mainnet.chainId,
@@ -18,65 +32,55 @@ const metamaskConfig: Config = {
 	}
 }
 
-const App = ({ Component, pageProps, router }: AppProps) => {
+type WarpzoneAppProps = AppProps & {
+	emotionCache?: EmotionCache
+}
+
+const App = ({
+	Component,
+	pageProps,
+	router,
+	emotionCache = clientSideEmotionCache
+}: WarpzoneAppProps) => {
+	const [isLoading, setLoading] = useState<boolean>(true)
+
+	useEffect(() => {
+		setTimeout(() => {
+			setLoading(false)
+		}, 1_250)
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
+
 	return (
-		<>
-			<Head>
-				<title>Warpzone Interface</title>
-				<link
-					rel="icon"
-					type="image/png"
-					sizes="32x32"
-					href="/favicon-32x32.png"
-				/>
-				<link
-					rel="icon"
-					type="image/png"
-					sizes="16x16"
-					href="/favicon-16x16.png"
-				/>
-				<link
-					rel="apple-touch-icon"
-					sizes="180x180"
-					href="/apple-touch-icon.png"
-				/>
-				<link rel="manifest" href="/site.webmanifest" />
-				<link rel="mask-icon" href="/safari-pinned-tab.svg" color="" />
-				<meta name="theme-color" content="#ffffff" />
-				<meta
-					name="viewport"
-					content="initial-scale=1.0, width=device-width"
-				/>
-				<meta name="description" content="" />
-				<meta property="og:title" content="" />
-				<meta property="og:image" content="" />
-				<meta property="og:type" content="website" />
-				<meta property="og:url" content="" />
-				<meta property="og:site_name" content="" />
-				<meta property="og:description" content="" />
-				<meta name="twitter:card" content="summary_large_image" />
-				<meta name="twitter:title" content="" />
-				<meta name="twitter:description" content="" />
-				<meta name="twitter:image" content="" />
-				<meta name="twitter:site" content="" />
-				<meta name="twitter:creator" content="@vexxvakan" />
-			</Head>
+		<CacheProvider value={emotionCache}>
 			<ChakraProvider theme={theme}>
 				<RecoilRoot>
-					<KeplrProvider config={config}>
-						<EVMProvider config={metamaskConfig}>
-							<QueryClientProvider client={queryClient}>
-								<Flex h="100vh" flex={1} direction="column">
-									<Component key={router.route} {...pageProps} />
-									<ReactQueryDevtools initialIsOpen={false} />
-								</Flex>
-							</QueryClientProvider>
-						</EVMProvider>
-					</KeplrProvider>
+					<EVMProvider config={metamaskConfig}>
+						<QueryClientProvider client={queryClient}>
+							<Head>
+								<meta
+									content="minimum-scale=1, initial-scale=1, width=device-width, shrink-to-fit=no, viewport-fit=cover"
+									name="viewport"
+								/>
+							</Head>
+							<DefaultSeo {...defaultSEOConfig} />
+							{isLoading && <LoadingScreen />}
+							{/* pointerEvents "none" in production, "all" to better debug threejs */}
+							<Flex h="100vh" pointerEvents="none" w="100vw">
+								<Component key={router.route} {...pageProps} />
+								<Background />
+								{/* <ReactQueryDevtools initialIsOpen={false} /> */}
+							</Flex>
+						</QueryClientProvider>
+					</EVMProvider>
 				</RecoilRoot>
 			</ChakraProvider>
-		</>
+		</CacheProvider>
 	)
+}
+
+App.defaultProps = {
+	emotionCache: clientSideEmotionCache
 }
 
 export default App
