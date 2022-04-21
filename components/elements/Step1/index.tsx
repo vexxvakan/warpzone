@@ -34,7 +34,7 @@ const Step1 = () => {
 		<VStack
 			border="2px solid rgba(255,255,255,0.125)"
 			overflow="hidden"
-			rounded="2xl"
+			rounded="3xl"
 			spacing={0}
 			w="full"
 		>
